@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Déduplication Devis-Commandes - Lot 12</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 25px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border: 2px dashed #dee2e6;
+      transition: all 0.3s;
+    }
+
+    .section:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-badge {
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .file-upload {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .file-upload input[type="file"] {
+      display: none;
+    }
+
+    .file-upload-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px;
+      background: white;
+      border: 2px dashed #ced4da;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      color: #6c757d;
+      font-weight: 500;
+    }
+
+    .file-upload-label:hover {
+      border-color: #667eea;
+      color: #667eea;
+      background: #f8f9ff;
+    }
+
+    .file-list {
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      transition: all 0.2s;
+    }
+
+    .file-item:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .file-icon {
+      font-size: 24px;
+    }
+
+    .file-name {
+      font-weight: 500;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .file-status {
+      font-size: 12px;
+      color: #6c757d;
+      margin-top: 2px;
+    }
+
+    .file-status.success {
+      color: #28a745;
+    }
+
+    .file-status.error {
+      color: #dc3545;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:disabled {
+      background: #ced4da;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+      padding: 15px 30px;
+      font-size: 16px;
+      margin-top: 20px;
+      width: 100%;
+    }
+
+    .btn-success:hover {
+      background: #218838;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+    }
+
+    .btn-success:disabled {
+      background: #ced4da;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .progress-container {
+      margin-top: 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s;
+    }
+
+    .logs {
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      color: #495057;
+    }
+
+    .log-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-time {
+      color: #6c757d;
+      margin-right: 10px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #6c757d;
+      font-weight: 500;
+    }
+
+    .alert {
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border-left: 4px solid #17a2b8;
+    }
+
+    .alert-success {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid #28a745;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .period-selector {
+      margin-bottom: 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    .period-selector label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .period-selector select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ced4da;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #495057;
+      background: white;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+
+    .period-selector select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [orders, setOrders] = useState([]);
+      const [quotes, setQuotes] = useState([]);
+      const [period, setPeriod] = useState({ start: '', end: '' });
+      const [processing, setProcessing] = useState(false);
+      const [progress, setProgress] = useState(0);
+      const [logs, setLogs] = useState([]);
+      const [clientTemplate, setClientTemplate] = useState(null);
+
+      const addLog = (message) => {
+        const time = new Date().toLocaleTimeString('fr-FR');
+        setLogs(prev => [...prev, { time, message }]);
+      };
+
+      const handleOrderPDFUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        addLog(`📄 ${files.length} fichier(s) BDC sélectionné(s)`);
+
+        for (const file of files) {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            addLog(`⏳ Traitement de ${file.name}...`);
+            const response = await fetch('/api/parse-order-pdf', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (!response.ok) throw new Error('Erreur lors du parsing');
+
+            const data = await response.json();
+            setOrders(prev => [...prev, { ...data, id: Date.now() + Math.random(), status: 'success' }]);
+            addLog(`✅ ${file.name} traité avec succès`);
+          } catch (error) {
+            addLog(`❌ Erreur: ${file.name} - ${error.message}`);
+            setOrders(prev => [...prev, { 
+              fileName: file.name, 
+              id: Date.now() + Math.random(), 
+              status: 'error',
+              error: error.message 
+            }]);
+          }
+        }
+      };
+
+      const handleQuoteExcelUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        addLog(`📊 ${files.length} fichier(s) Excel devis sélectionné(s)`);
+
+        for (const file of files) {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            addLog(`⏳ Traitement de ${file.name}...`);
+            const response = await fetch('/api/parse-quote-excel', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (!response.ok) throw new Error('Erreur lors du parsing');
+
+            const data = await response.json();
+            setQuotes(prev => [...prev, { ...data, id: Date.now() + Math.random(), status: 'success' }]);
+            addLog(`✅ ${file.name} traité - ${data.prestationCount} prestations trouvées`);
+          } catch (error) {
+            addLog(`❌ Erreur: ${file.name} - ${error.message}`);
+            setQuotes(prev => [...prev, { 
+              fileName: file.name, 
+              id: Date.now() + Math.random(), 
+              status: 'error',
+              error: error.message 
+            }]);
+          }
+        }
+      };
+
+      const handleQuotePDFUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        addLog(`📄 ${files.length} PDF devis sélectionné(s)`);
+
+        for (const file of files) {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            addLog(`⏳ Traitement de ${file.name}...`);
+            const response = await fetch('/api/parse-quote-pdf', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (!response.ok) throw new Error('Erreur lors du parsing');
+
+            const data = await response.json();
+            setQuotes(prev => [...prev, { ...data, id: Date.now() + Math.random(), status: 'success' }]);
+            addLog(`✅ ${file.name} traité avec succès`);
+          } catch (error) {
+            addLog(`❌ Erreur: ${file.name} - ${error.message}`);
+            setQuotes(prev => [...prev, { 
+              fileName: file.name, 
+              id: Date.now() + Math.random(), 
+              status: 'error',
+              error: error.message 
+            }]);
+          }
+        }
+      };
+
+      const generateClientReport = async () => {
+  if (!clientTemplate) {
+    addLog('❌ Veuillez d\'abord sélectionner le template Excel client');
+    return;
+  }
+
+  setProcessing(true);
+  setProgress(0);
+  addLog('🚀 Génération du rapport client en cours...');
+
+  try {
+    setProgress(30);
+    
+    const formData = new FormData();
+    formData.append('template', clientTemplate);
+    formData.append('orders', JSON.stringify(successOrders));
+    formData.append('quotes', JSON.stringify(successQuotes));
+    formData.append('period', JSON.stringify(period));
+
+    const response = await fetch('/api/generate-client-report', {
+      method: 'POST',
+      body: formData
+    });
+
+    setProgress(70);
+    if (!response.ok) throw new Error('Erreur lors de la génération du rapport client');
+
+    const blob = await response.blob();
+    setProgress(90);
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rapport-client-${period.start || 'periode'}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    setProgress(100);
+    addLog('✅ Rapport client généré et téléchargé avec succès!');
+  } catch (error) {
+    addLog(`❌ Erreur génération rapport client: ${error.message}`);
+  } finally {
+    setTimeout(() => {
+      setProcessing(false);
+      setProgress(0);
+    }, 1000);
+  }
+};
+
+const handleTemplateUpload = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    setClientTemplate(file);
+    addLog(`📋 Template client sélectionné: ${file.name}`);
+  }
+};
+      const removeOrder = (id) => {
+        setOrders(prev => prev.filter(o => o.id !== id));
+        addLog('🗑️ Commande supprimée');
+      };
+
+      const removeQuote = (id) => {
+        setQuotes(prev => prev.filter(q => q.id !== id));
+        addLog('🗑️ Devis supprimé');
+      };
+
+      const successOrders = orders.filter(o => o.status === 'success');
+      const successQuotes = quotes.filter(q => q.status === 'success');
+      const totalPrestations = successQuotes.reduce((sum, q) => sum + (q.prestationCount || 0), 0);
+
+      return (
+        <div className="container">
+          <div className="header">
+            <h1>📋 Déduplication Devis-Commandes</h1>
+            <p>Lot 12 - Charpente, Couverture, Étanchéité - Suivi Trimestriel</p>
+          </div>
+
+          <div className="content">
+            <div className="alert alert-info">
+              <span>ℹ️</span>
+              <div>
+                <strong>Information:</strong> Cette application extrait automatiquement les données des BDC (PDF), 
+                des devis (Excel/PDF) et génère un rapport Excel avec déduplication automatique des devis ayant 
+                généré des commandes.
+              </div>
+            </div>
+
+            <div className="period-selector">
+  <label>Période de suivi :</label>
+  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+    <div style={{ flex: 1 }}>
+      <label htmlFor="startDate">Date de début :</label>
+      <input
+        type="text"
+        id="startDate"
+        placeholder="JJ/MM/AAAA"
+        value={period.start || ''}
+        onChange={(e) => setPeriod({ ...period, start: e.target.value })}
+        style={{
+          width: '100%',
+          padding: '10px',
+          border: '2px solid #ced4da',
+          borderRadius: '6px',
+          fontSize: '14px',
+          marginTop: '5px'
+        }}
+      />
+    </div>
+
+    <div style={{ flex: 1 }}>
+      <label htmlFor="endDate">Date de fin :</label>
+      <input
+        type="text"
+        id="endDate"
+        placeholder="JJ/MM/AAAA"
+        value={period.end || ''}
+        onChange={(e) => setPeriod({ ...period, end: e.target.value })}
+        style={{
+          width: '100%',
+          padding: '10px',
+          border: '2px solid #ced4da',
+          borderRadius: '6px',
+          fontSize: '14px',
+          marginTop: '5px'
+        }}
+      />
+    </div>
+  </div>
+</div>
+
+            {/* Section Commandes (BDC PDF) */}
+            <div className="section">
+              <div className="section-title">
+                📦 Commandes (BDC PDF)
+                <span className="section-badge">{successOrders.length}</span>
+              </div>
+              
+              <div className="file-upload">
+                <input 
+                  type="file" 
+                  id="order-upload" 
+                  multiple 
+                  accept=".pdf"
+                  onChange={handleOrderPDFUpload}
+                />
+                <label htmlFor="order-upload" className="file-upload-label">
+                  <span>📤</span>
+                  <span>Cliquez pour sélectionner des fichiers BDC (PDF)</span>
+                </label>
+              </div>
+
+              {orders.length > 0 && (
+                <div className="file-list">
+                  {orders.map(order => (
+                    <div key={order.id} className="file-item">
+                      <div className="file-info">
+                        <span className="file-icon">📄</span>
+                        <div>
+                          <div className="file-name">{order.fileName}</div>
+                          <div className={`file-status ${order.status}`}>
+                            {order.status === 'success' 
+                              ? `N° ${order.orderNumber} - ${order.beneficiary} - ${order.amount || 'N/A'}€`
+                              : `Erreur: ${order.error}`
+                            }
+                          </div>
+                        </div>
+                      </div>
+                      <div className="file-actions">
+                        <button 
+                          className="btn btn-danger" 
+                          onClick={() => removeOrder(order.id)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Section Devis Excel */}
+            <div className="section">
+              <div className="section-title">
+                📊 Devis avec prestations (Excel)
+                <span className="section-badge">{successQuotes.filter(q => q.prestations).length}</span>
+              </div>
+              
+              <div className="file-upload">
+                <input 
+                  type="file" 
+                  id="quote-excel-upload" 
+                  multiple 
+                  accept=".xlsx,.xls"
+                  onChange={handleQuoteExcelUpload}
+                />
+                <label htmlFor="quote-excel-upload" className="file-upload-label">
+                  <span>📤</span>
+                  <span>Cliquez pour sélectionner des fichiers Excel devis</span>
+                </label>
+              </div>
+
+              {quotes.filter(q => q.prestations).length > 0 && (
+                <div className="file-list">
+                  {quotes.filter(q => q.prestations).map(quote => (
+                    <div key={quote.id} className="file-item">
+                      <div className="file-info">
+                        <span className="file-icon">📊</span>
+                        <div>
+                          <div className="file-name">{quote.fileName}</div>
+                          <div className={`file-status ${quote.status}`}>
+                            {quote.status === 'success' 
+                              ? `Devis ${quote.quoteNumber} - ${quote.prestationCount} prestations`
+                              : `Erreur: ${quote.error}`
+                            }
+                          </div>
+                        </div>
+                      </div>
+                      <div className="file-actions">
+                        <button 
+                          className="btn btn-danger" 
+                          onClick={() => removeQuote(quote.id)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+{/* Section Template Client */}
+<div className="section">
+  <div className="section-title">
+    📋 Template Excel Client
+    <span className="section-badge">{clientTemplate ? '1' : '0'}</span>
+  </div>
+  
+  <div className="file-upload">
+    <input 
+      type="file" 
+      id="template-upload" 
+      accept=".xlsx"
+      onChange={handleTemplateUpload}
+    />
+    <label htmlFor="template-upload" className="file-upload-label">
+      <span>📤</span>
+      <span>Sélectionner le template vierge à remplir (.xlsx)</span>
+    </label>
+  </div>
+
+  {clientTemplate && (
+    <div className="file-list">
+      <div className="file-item">
+        <div className="file-info">
+          <span className="file-icon">📋</span>
+          <div>
+            <div className="file-name">{clientTemplate.name}</div>
+            <div className="file-status success">
+              Template prêt à être utilisé
+            </div>
+          </div>
+        </div>
+        <div className="file-actions">
+          <button 
+            className="btn btn-danger" 
+            onClick={() => {
+              setClientTemplate(null);
+              addLog('🗑️ Template supprimé');
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+            {/* Section Devis PDF */}
+            <div className="section">
+              <div className="section-title">
+                📄 Devis sans détails (PDF)
+                <span className="section-badge">{successQuotes.filter(q => !q.prestations).length}</span>
+              </div>
+              
+              <div className="file-upload">
+                <input 
+                  type="file" 
+                  id="quote-pdf-upload" 
+                  multiple 
+                  accept=".pdf"
+                  onChange={handleQuotePDFUpload}
+                />
+                <label htmlFor="quote-pdf-upload" className="file-upload-label">
+                  <span>📤</span>
+                  <span>Cliquez pour sélectionner des PDF devis</span>
+                </label>
+              </div>
+
+              {quotes.filter(q => !q.prestations).length > 0 && (
+                <div className="file-list">
+                  {quotes.filter(q => !q.prestations).map(quote => (
+                    <div key={quote.id} className="file-item">
+                      <div className="file-info">
+                        <span className="file-icon">📄</span>
+                        <div>
+                          <div className="file-name">{quote.fileName}</div>
+                          <div className={`file-status ${quote.status}`}>
+                            {quote.status === 'success' 
+                              ? `Devis ${quote.quoteNumber} - ${quote.totalAmount || 'N/A'}€`
+                              : `Erreur: ${quote.error}`
+                            }
+                          </div>
+                        </div>
+                      </div>
+                      <div className="file-actions">
+                        <button 
+                          className="btn btn-danger" 
+                          onClick={() => removeQuote(quote.id)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Statistiques */}
+            {(successOrders.length > 0 || successQuotes.length > 0) && (
+              <div className="stats">
+                <div className="stat-card">
+                  <div className="stat-value">{successOrders.length}</div>
+                  <div className="stat-label">Commandes</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{successQuotes.length}</div>
+                  <div className="stat-label">Devis</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{totalPrestations}</div>
+                  <div className="stat-label">Prestations</div>
+                </div>
+              </div>
+            )}
+
+            {/* Bouton de génération */}
+            <button 
+  className="btn btn-success"
+  onClick={generateClientReport}
+  disabled={processing || !clientTemplate || (successOrders.length === 0 && successQuotes.length === 0)}
+  style={{ marginTop: '10px', background: '#764ba2' }}
+>
+  {processing ? (
+    <>
+      <span className="spinner"></span>
+      Génération rapport client...
+    </>
+  ) : (
+    '📋 Générer le rapport client (Template)'
+  )}
+</button>
+            {/* Logs et progression */}
+            {logs.length > 0 && (
+              <div className="progress-container">
+                {processing && (
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                  </div>
+                )}
+                
+                <div className="logs">
+                  {logs.map((log, index) => (
+                    <div key={index} className="log-entry">
+                      <span className="log-time">{log.time}</span>
+                      <span>{log.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
