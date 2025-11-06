@@ -5,6 +5,13 @@ const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const cors = require('cors');
 const path = require('path');
+const basicAuth = require('express-basic-auth');
+
+app.use(basicAuth({
+  users: { 'olivier': 'sarmates2025' }, // identifiant / mot de passe
+  challenge: true,
+  realm: 'Application DAE'
+}));
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
