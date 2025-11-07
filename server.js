@@ -1013,7 +1013,14 @@ else if (moneyColumns.includes(colNumber)) {
 } 
 // ✅ 3. Valeur normale
 else {
-  cell.value = value;
+  // ✅ CORRECTION : Forcer format texte pour la colonne C (codes BPU)
+  if (colNumber === 3 && typeof value === 'string' && /^\d+$/.test(value)) {
+    // Si c'est la colonne C (Code BPU) et que c'est un nombre en string
+    cell.value = value;
+    cell.numFmt = '@'; // ✅ Format TEXTE
+  } else {
+    cell.value = value;
+  }
 }        });
     
         newRow.commit();
@@ -1089,5 +1096,6 @@ for (let row = startPrestationsRow; row <= endPrestationsRow; row++) {
   }
 });const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
+
 
 
