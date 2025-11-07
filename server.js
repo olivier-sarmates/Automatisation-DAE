@@ -3,6 +3,7 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
+const basicAuth = require('express-basic-auth');
 const cors = require('cors');
 const path = require('path');
 
@@ -10,6 +11,13 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
+   
+   // 🔐 Authentification basique
+   app.use(basicAuth({
+     users: { admin: 'sarmates2025' },
+     challenge: true,
+     realm: 'Application Devis-Commandes'
+   }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public'));
@@ -1081,4 +1089,5 @@ for (let row = startPrestationsRow; row <= endPrestationsRow; row++) {
   }
 });const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
+
 
