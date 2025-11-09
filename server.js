@@ -930,7 +930,7 @@ app.post('/api/generate-client-report', upload.single('template'), async (req, r
           prestationsData.push([
             order.orderNumber || '',           // A: N° BC
             order.serviceContact || '',        // B: Service
-            p.bpuCode || '',                   // C: Code BPU
+            String(p.bpuCode || '').padStart(4, '0'), // ✅ Force 4 chiffres minimum
             p.designation || '',               // D: Libellé
             p.unit || '',                      // E: Unité
             Number(p.unitPrice) || 0,          // F: PU
@@ -1096,6 +1096,7 @@ for (let row = startPrestationsRow; row <= endPrestationsRow; row++) {
   }
 });const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
+
 
 
 
