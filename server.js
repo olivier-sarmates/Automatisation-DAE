@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
@@ -10,16 +12,22 @@ const path = require('path');
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Configuration depuis les variables d'environnement
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sarmates2025';
+const FILE_SIZE_LIMIT = process.env.FILE_SIZE_LIMIT || '50';
+
 app.use(cors());
-   
-   // 🔐 Authentification basique
-   app.use(basicAuth({
-     users: { admin: 'sarmates2025' },
-     challenge: true,
-     realm: 'Application Devis-Commandes'
-   }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// 🔐 Authentification basique (credentials depuis .env)
+app.use(basicAuth({
+  users: { [ADMIN_USER]: ADMIN_PASSWORD },
+  challenge: true,
+  realm: 'Application Devis-Commandes'
+}));
+
+app.use(express.json({ limit: `${FILE_SIZE_LIMIT}mb` }));
+app.use(express.urlencoded({ limit: `${FILE_SIZE_LIMIT}mb`, extended: true }));
 app.use(express.static('public'));
 
 // Fonction pour parser les dates françaises
