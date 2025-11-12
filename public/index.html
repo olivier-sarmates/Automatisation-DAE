@@ -481,13 +481,110 @@
             addLog(`✅ ${file.name} traité avec succès`);
           } catch (error) {
             addLog(`❌ Erreur: ${file.name} - ${error.message}`);
-            setQuotes(prev => [...prev, { 
-              fileName: file.name, 
-              id: Date.now() + Math.random(), 
+            setQuotes(prev => [...prev, {
+              fileName: file.name,
+              id: Date.now() + Math.random(),
               status: 'error',
-              error: error.message 
+              error: error.message
             }]);
           }
+        }
+      };
+
+      // ========== FONCTION DE DÉTECTION AUTOMATIQUE ==========
+      const handleAllFilesUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        addLog(`📁 ${files.length} fichier(s) chargé(s) - Détection automatique en cours...`);
+
+        for (const file of files) {
+          const ext = file.name.split('.').pop().toLowerCase();
+
+          if (ext === 'xlsx' || ext === 'xls') {
+            // Fichier Excel → Devis Excel
+            await processQuoteExcel(file);
+          } else if (ext === 'pdf') {
+            // Fichier PDF → Détecter automatiquement si BDC ou Devis
+            await processPDFAuto(file);
+          } else {
+            addLog(`⚠️ ${file.name} - Format non supporté`);
+          }
+        }
+      };
+
+      const processQuoteExcel = async (file) => {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+
+          addLog(`⏳ Traitement Excel: ${file.name}...`);
+          const response = await fetch('/api/parse-quote-excel', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) throw new Error('Erreur parsing Excel');
+
+          const data = await response.json();
+          setQuotes(prev => [...prev, { ...data, id: Date.now() + Math.random(), status: 'success' }]);
+          addLog(`✅ Devis Excel ${file.name} traité - ${data.prestationCount} prestations`);
+        } catch (error) {
+          addLog(`❌ Erreur Excel: ${file.name} - ${error.message}`);
+          setQuotes(prev => [...prev, {
+            fileName: file.name,
+            id: Date.now() + Math.random(),
+            status: 'error',
+            error: error.message
+          }]);
+        }
+      };
+
+      const processPDFAuto = async (file) => {
+        try {
+          addLog(`🔍 Analyse PDF: ${file.name}...`);
+
+          // 1. Essayer d'abord comme BDC (Bon De Commande)
+          const formDataOrder = new FormData();
+          formDataOrder.append('file', file);
+
+          const orderResponse = await fetch('/api/parse-order-pdf', {
+            method: 'POST',
+            body: formDataOrder
+          });
+
+          if (orderResponse.ok) {
+            const orderData = await orderResponse.json();
+
+            // Si on a un numéro de commande valide, c'est un BDC
+            if (orderData.orderNumber && orderData.orderNumber !== 'N/A') {
+              setOrders(prev => [...prev, { ...orderData, id: Date.now() + Math.random(), status: 'success' }]);
+              addLog(`✅ BDC détecté: ${file.name} - N° ${orderData.orderNumber}`);
+              return;
+            }
+          }
+
+          // 2. Sinon, c'est un Devis PDF
+          const formDataQuote = new FormData();
+          formDataQuote.append('file', file);
+
+          const quoteResponse = await fetch('/api/parse-quote-pdf', {
+            method: 'POST',
+            body: formDataQuote
+          });
+
+          if (!quoteResponse.ok) throw new Error('Erreur parsing PDF');
+
+          const quoteData = await quoteResponse.json();
+          setQuotes(prev => [...prev, { ...quoteData, id: Date.now() + Math.random(), status: 'success' }]);
+          addLog(`✅ Devis PDF détecté: ${file.name} - N° ${quoteData.quoteNumber}`);
+
+        } catch (error) {
+          addLog(`❌ Erreur PDF: ${file.name} - ${error.message}`);
+          setQuotes(prev => [...prev, {
+            fileName: file.name,
+            id: Date.now() + Math.random(),
+            status: 'error',
+            error: error.message
+          }]);
         }
       };
 
@@ -574,9 +671,8 @@ const handleTemplateUpload = (e) => {
             <div className="alert alert-info">
               <span>ℹ️</span>
               <div>
-                <strong>Information:</strong> Cette application extrait automatiquement les données des BDC (PDF), 
-                des devis (Excel/PDF) et génère un rapport Excel avec déduplication automatique des devis ayant 
-                généré des commandes.
+                <strong>Mode simplifié :</strong> Chargez TOUS vos fichiers en une seule fois (BDC PDF, Devis Excel, Devis PDF).
+                L'application détecte automatiquement le type de chaque fichier et génère le rapport client.
               </div>
             </div>
 
@@ -623,46 +719,59 @@ const handleTemplateUpload = (e) => {
   </div>
 </div>
 
-            {/* Section Commandes (BDC PDF) */}
+            {/* Zone de dépôt unique pour TOUS les fichiers */}
             <div className="section">
               <div className="section-title">
-                📦 Commandes (BDC PDF)
-                <span className="section-badge">{successOrders.length}</span>
+                📁 Charger tous les fichiers (PDF + Excel)
+                <span className="section-badge">{orders.length + quotes.length}</span>
               </div>
-              
+
               <div className="file-upload">
-                <input 
-                  type="file" 
-                  id="order-upload" 
-                  multiple 
-                  accept=".pdf"
-                  onChange={handleOrderPDFUpload}
+                <input
+                  type="file"
+                  id="all-files-upload"
+                  multiple
+                  accept=".pdf,.xlsx,.xls"
+                  onChange={handleAllFilesUpload}
                 />
-                <label htmlFor="order-upload" className="file-upload-label">
+                <label htmlFor="all-files-upload" className="file-upload-label">
                   <span>📤</span>
-                  <span>Cliquez pour sélectionner des fichiers BDC (PDF)</span>
+                  <span>Déposez ou cliquez pour charger TOUS vos fichiers (BDC, Devis Excel et PDF)</span>
                 </label>
               </div>
 
-              {orders.length > 0 && (
+              {/* Liste unifiée de tous les fichiers */}
+              {(orders.length > 0 || quotes.length > 0) && (
                 <div className="file-list">
+                  {/* Afficher les commandes */}
                   {orders.map(order => (
                     <div key={order.id} className="file-item">
                       <div className="file-info">
-                        <span className="file-icon">📄</span>
+                        <span className="file-icon">📦</span>
                         <div>
-                          <div className="file-name">{order.fileName}</div>
+                          <div className="file-name">
+                            {order.fileName}
+                            <span style={{
+                              marginLeft: '10px',
+                              background: '#28a745',
+                              color: 'white',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 'bold'
+                            }}>BDC</span>
+                          </div>
                           <div className={`file-status ${order.status}`}>
-                            {order.status === 'success' 
-                              ? `N° ${order.orderNumber} - ${order.beneficiary} - ${order.amount || 'N/A'}€`
+                            {order.status === 'success'
+                              ? `N° ${order.orderNumber} - ${order.serviceContact} - ${order.totalHT || 'N/A'}€`
                               : `Erreur: ${order.error}`
                             }
                           </div>
                         </div>
                       </div>
                       <div className="file-actions">
-                        <button 
-                          className="btn btn-danger" 
+                        <button
+                          className="btn btn-danger"
                           onClick={() => removeOrder(order.id)}
                         >
                           ✕
@@ -670,50 +779,40 @@ const handleTemplateUpload = (e) => {
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
 
-            {/* Section Devis Excel */}
-            <div className="section">
-              <div className="section-title">
-                📊 Devis avec prestations (Excel)
-                <span className="section-badge">{successQuotes.filter(q => q.prestations).length}</span>
-              </div>
-              
-              <div className="file-upload">
-                <input 
-                  type="file" 
-                  id="quote-excel-upload" 
-                  multiple 
-                  accept=".xlsx,.xls"
-                  onChange={handleQuoteExcelUpload}
-                />
-                <label htmlFor="quote-excel-upload" className="file-upload-label">
-                  <span>📤</span>
-                  <span>Cliquez pour sélectionner des fichiers Excel devis</span>
-                </label>
-              </div>
-
-              {quotes.filter(q => q.prestations).length > 0 && (
-                <div className="file-list">
-                  {quotes.filter(q => q.prestations).map(quote => (
+                  {/* Afficher les devis */}
+                  {quotes.map(quote => (
                     <div key={quote.id} className="file-item">
                       <div className="file-info">
-                        <span className="file-icon">📊</span>
+                        <span className="file-icon">{quote.prestations ? '📊' : '📄'}</span>
                         <div>
-                          <div className="file-name">{quote.fileName}</div>
+                          <div className="file-name">
+                            {quote.fileName}
+                            <span style={{
+                              marginLeft: '10px',
+                              background: quote.prestations ? '#007bff' : '#6f42c1',
+                              color: 'white',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 'bold'
+                            }}>
+                              {quote.prestations ? 'DEVIS EXCEL' : 'DEVIS PDF'}
+                            </span>
+                          </div>
                           <div className={`file-status ${quote.status}`}>
-                            {quote.status === 'success' 
-                              ? `Devis ${quote.quoteNumber} - ${quote.prestationCount} prestations`
+                            {quote.status === 'success'
+                              ? quote.prestations
+                                ? `Devis ${quote.quoteNumber} - ${quote.prestationCount} prestations`
+                                : `Devis ${quote.quoteNumber} - ${quote.totalAmount || 'N/A'}€`
                               : `Erreur: ${quote.error}`
                             }
                           </div>
                         </div>
                       </div>
                       <div className="file-actions">
-                        <button 
-                          className="btn btn-danger" 
+                        <button
+                          className="btn btn-danger"
                           onClick={() => removeQuote(quote.id)}
                         >
                           ✕
@@ -724,17 +823,18 @@ const handleTemplateUpload = (e) => {
                 </div>
               )}
             </div>
+
 {/* Section Template Client */}
 <div className="section">
   <div className="section-title">
-    📋 Template Excel Client
-    <span className="section-badge">{clientTemplate ? '1' : '0'}</span>
+    📋 Template Excel Client (à remplir)
+    <span className="section-badge">{clientTemplate ? '✓' : '0'}</span>
   </div>
-  
+
   <div className="file-upload">
-    <input 
-      type="file" 
-      id="template-upload" 
+    <input
+      type="file"
+      id="template-upload"
       accept=".xlsx"
       onChange={handleTemplateUpload}
     />
@@ -752,13 +852,13 @@ const handleTemplateUpload = (e) => {
           <div>
             <div className="file-name">{clientTemplate.name}</div>
             <div className="file-status success">
-              Template prêt à être utilisé
+              Template prêt à être rempli
             </div>
           </div>
         </div>
         <div className="file-actions">
-          <button 
-            className="btn btn-danger" 
+          <button
+            className="btn btn-danger"
             onClick={() => {
               setClientTemplate(null);
               addLog('🗑️ Template supprimé');
@@ -771,56 +871,6 @@ const handleTemplateUpload = (e) => {
     </div>
   )}
 </div>
-            {/* Section Devis PDF */}
-            <div className="section">
-              <div className="section-title">
-                📄 Devis sans détails (PDF)
-                <span className="section-badge">{successQuotes.filter(q => !q.prestations).length}</span>
-              </div>
-              
-              <div className="file-upload">
-                <input 
-                  type="file" 
-                  id="quote-pdf-upload" 
-                  multiple 
-                  accept=".pdf"
-                  onChange={handleQuotePDFUpload}
-                />
-                <label htmlFor="quote-pdf-upload" className="file-upload-label">
-                  <span>📤</span>
-                  <span>Cliquez pour sélectionner des PDF devis</span>
-                </label>
-              </div>
-
-              {quotes.filter(q => !q.prestations).length > 0 && (
-                <div className="file-list">
-                  {quotes.filter(q => !q.prestations).map(quote => (
-                    <div key={quote.id} className="file-item">
-                      <div className="file-info">
-                        <span className="file-icon">📄</span>
-                        <div>
-                          <div className="file-name">{quote.fileName}</div>
-                          <div className={`file-status ${quote.status}`}>
-                            {quote.status === 'success' 
-                              ? `Devis ${quote.quoteNumber} - ${quote.totalAmount || 'N/A'}€`
-                              : `Erreur: ${quote.error}`
-                            }
-                          </div>
-                        </div>
-                      </div>
-                      <div className="file-actions">
-                        <button 
-                          className="btn btn-danger" 
-                          onClick={() => removeQuote(quote.id)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Statistiques */}
             {(successOrders.length > 0 || successQuotes.length > 0) && (
