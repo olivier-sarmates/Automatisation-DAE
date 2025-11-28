@@ -1107,8 +1107,8 @@ console.log(`✅ Tableau 3 : Formule écrasée à D${templateFormula3Row} = SUM(
 
 lastContentRow = templateFormula3Row;
 
-// ✅ Définir la zone d'impression TOUJOURS (avec 15 lignes de marge)
-const printEndRow = lastContentRow + 15;
+// ✅ Définir la zone d'impression TOUJOURS (avec 19 lignes de marge)
+const printEndRow = lastContentRow + 19;
 worksheet.pageSetup.printArea = `A1:M${printEndRow}`;
 worksheet.pageSetup.fitToPage = false; // pas de redimensionnement auto
 worksheet.pageSetup.fitToHeight = undefined;
