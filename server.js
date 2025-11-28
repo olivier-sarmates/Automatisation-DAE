@@ -1065,20 +1065,21 @@ insertRowsExcelJS(worksheet, 39, prestationsData, false, null, [6], 13);  // ✅
 console.log('Insertion Tableau 1 (Commandes)');
 insertRowsExcelJS(worksheet, 31, ordersData, false, null, [4]);
 
-// ✅ AJOUT : Formule de somme pour le Tableau 1 (Commandes)
-console.log('Ajout de la formule de somme pour Tableau 1...');
-if (ordersData.length > 0) {
-  const startOrdersRow = 31;
-  const endOrdersRow = startOrdersRow + ordersData.length - 1;
-  const totalOrdersRow = endOrdersRow + 2; // 2 lignes après la dernière commande
+// ✅ CORRECTION : Formule de somme Tableau 1 - Écraser la formule du template
+console.log('Correction formule somme Tableau 1...');
+const startOrdersRow = 31;
+const endOrdersRow = startOrdersRow + ordersData.length - 1;
 
-  const totalOrdersCell = worksheet.getCell(`D${totalOrdersRow}`);
-  totalOrdersCell.value = { formula: `SUM(D${startOrdersRow}:D${endOrdersRow})` };
-  totalOrdersCell.numFmt = '#,##0.00 €';
-  totalOrdersCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+// Position de la formule du template après insertions (originalement D34)
+const templateFormula1Row = 34 + ordersData.length;
 
-  console.log(`Total Tableau 1 placé en D${totalOrdersRow} = SUM(D${startOrdersRow}:D${endOrdersRow})`);
-}
+// Écraser la formule du template avec la bonne plage
+const totalOrdersCell = worksheet.getCell(`D${templateFormula1Row}`);
+totalOrdersCell.value = { formula: `SUM(D${startOrdersRow}:D${endOrdersRow})` };
+totalOrdersCell.numFmt = '#,##0.00 €';
+totalOrdersCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+
+console.log(`✅ Tableau 1 : Formule écrasée à D${templateFormula1Row} = SUM(D${startOrdersRow}:D${endOrdersRow})`);
 
 console.log('Ajout des formules colonne J (après toutes les insertions)...');
 console.log('Recalage de la somme du Tableau 3 (Devis sans commande)...');
@@ -1087,28 +1088,24 @@ console.log('Recalage de la somme du Tableau 3 (Devis sans commande)...');
 // Calcul de la dernière ligne utilisée dans le document
 let lastContentRow;
 
-if (quotesData.length > 0) {
-  // Ligne de départ réelle du tableau 3 après TOUTES les insertions
-  const startQuotesRow = 50 + prestationsData.length + ordersData.length;
+// Ligne de départ réelle du tableau 3 après TOUTES les insertions
+const startQuotesRow = 50 + prestationsData.length + ordersData.length;
 
-  // Ligne de fin du tableau 3
-  const endQuotesRow = startQuotesRow + quotesData.length - 1;
+// Ligne de fin du tableau 3
+const endQuotesRow = startQuotesRow + quotesData.length - 1;
 
-  // ➕ Décalage de 5 lignes pour tomber sur la cellule "TOTAUX" du modèle
-  const totalRow = endQuotesRow + 5;
+// Position de la formule du template après TOUTES les insertions (originalement D54)
+const templateFormula3Row = 54 + ordersData.length + prestationsData.length + quotesData.length;
 
-  const totalCell = worksheet.getCell(`D${totalRow}`);
-  totalCell.value = { formula: `SUM(D${startQuotesRow}:D${endQuotesRow})` };
-  totalCell.numFmt = '#,##0.00 €';
-  totalCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+// Écraser la formule du template avec la bonne plage
+const totalCell = worksheet.getCell(`D${templateFormula3Row}`);
+totalCell.value = { formula: `SUM(D${startQuotesRow}:D${endQuotesRow})` };
+totalCell.numFmt = '#,##0.00 €';
+totalCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
 
-  console.log(`Total Tableau 3 placé en D${totalRow} = SUM(D${startQuotesRow}:D${endQuotesRow})`);
+console.log(`✅ Tableau 3 : Formule écrasée à D${templateFormula3Row} = SUM(D${startQuotesRow}:D${endQuotesRow})`);
 
-  lastContentRow = totalRow;
-} else {
-  // Si pas de devis, la dernière ligne est après le Tableau 2
-  lastContentRow = 39 + ordersData.length + prestationsData.length + 5;
-}
+lastContentRow = templateFormula3Row;
 
 // ✅ Définir la zone d'impression TOUJOURS (avec 15 lignes de marge)
 const printEndRow = lastContentRow + 15;
