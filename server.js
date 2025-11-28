@@ -186,12 +186,30 @@ app.post('/api/parse-quote-excel', upload.single('file'), async (req, res) => {
     console.log('Noms des feuilles:', workbook.SheetNames);
     console.log('========================================\n');
 
-// Chercher la feuille BPU (peut être "BPU DAE" ou "BPU TREMBLAY")
+// ✅ Chercher la feuille BPU de manière intelligente
 let sheetName = null;
+
+// 1. Vérifier les noms exacts connus
 if (workbook.SheetNames.includes('BPU DAE')) {
   sheetName = 'BPU DAE';
 } else if (workbook.SheetNames.includes('BPU TREMBLAY')) {
   sheetName = 'BPU TREMBLAY';
+} else {
+  // 2. Chercher les feuilles commençant par "DEVIS"
+  const devisSheets = workbook.SheetNames.filter(name =>
+    name.toUpperCase().startsWith('DEVIS')
+  );
+
+  if (devisSheets.length > 0) {
+    // 3. Si plusieurs feuilles DEVIS, prendre celle avec la lettre la plus élevée
+    // Ex: "DEVIS IND B" > "DEVIS IND A" > "DEVIS"
+    sheetName = devisSheets.sort((a, b) => {
+      // Tri alphabétique décroissant (Z avant A)
+      return b.localeCompare(a);
+    })[0];
+
+    console.log(`✓ Feuille DEVIS détectée : "${sheetName}" (parmi ${devisSheets.length} feuille(s) DEVIS)`);
+  }
 }
 
 if (sheetName) {
@@ -1046,8 +1064,28 @@ insertRowsExcelJS(worksheet, 39, prestationsData, false, null, [6], 13);  // ✅
 // 11. Insérer Tableau 1 (ligne 31) - Colonne D = Montant HT avec €
 console.log('Insertion Tableau 1 (Commandes)');
 insertRowsExcelJS(worksheet, 31, ordersData, false, null, [4]);
+
+// ✅ AJOUT : Formule de somme pour le Tableau 1 (Commandes)
+console.log('Ajout de la formule de somme pour Tableau 1...');
+if (ordersData.length > 0) {
+  const startOrdersRow = 31;
+  const endOrdersRow = startOrdersRow + ordersData.length - 1;
+  const totalOrdersRow = endOrdersRow + 2; // 2 lignes après la dernière commande
+
+  const totalOrdersCell = worksheet.getCell(`D${totalOrdersRow}`);
+  totalOrdersCell.value = { formula: `SUM(D${startOrdersRow}:D${endOrdersRow})` };
+  totalOrdersCell.numFmt = '#,##0.00 €';
+  totalOrdersCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+
+  console.log(`Total Tableau 1 placé en D${totalOrdersRow} = SUM(D${startOrdersRow}:D${endOrdersRow})`);
+}
+
 console.log('Ajout des formules colonne J (après toutes les insertions)...');
 console.log('Recalage de la somme du Tableau 3 (Devis sans commande)...');
+
+// ✅ CORRECTION : Calcul de la zone d'impression TOUJOURS effectué
+// Calcul de la dernière ligne utilisée dans le document
+let lastContentRow;
 
 if (quotesData.length > 0) {
   // Ligne de départ réelle du tableau 3 après TOUTES les insertions
@@ -1056,7 +1094,7 @@ if (quotesData.length > 0) {
   // Ligne de fin du tableau 3
   const endQuotesRow = startQuotesRow + quotesData.length - 1;
 
-  // ➕ Décalage de 4 lignes pour tomber sur la cellule "TOTAUX" du modèle
+  // ➕ Décalage de 5 lignes pour tomber sur la cellule "TOTAUX" du modèle
   const totalRow = endQuotesRow + 5;
 
   const totalCell = worksheet.getCell(`D${totalRow}`);
@@ -1066,17 +1104,20 @@ if (quotesData.length > 0) {
 
   console.log(`Total Tableau 3 placé en D${totalRow} = SUM(D${startQuotesRow}:D${endQuotesRow})`);
 
-  // ✅ Calcul dynamique de la fin de zone d'impression (20 lignes sous le total)
-  const printEndRow = totalRow + 20;
-
-  // ✅ Définir la zone d'impression sans contrainte de mise à l'échelle
-  worksheet.pageSetup.printArea = `A1:M${printEndRow}`;
-  worksheet.pageSetup.fitToPage = false; // pas de redimensionnement
-  worksheet.pageSetup.fitToHeight = undefined;
-  worksheet.pageSetup.fitToWidth = undefined;
-
-  console.log(`Zone d'impression ajustée dynamiquement : A1:D${printEndRow}`);
+  lastContentRow = totalRow;
+} else {
+  // Si pas de devis, la dernière ligne est après le Tableau 2
+  lastContentRow = 39 + ordersData.length + prestationsData.length + 5;
 }
+
+// ✅ Définir la zone d'impression TOUJOURS (avec 15 lignes de marge)
+const printEndRow = lastContentRow + 15;
+worksheet.pageSetup.printArea = `A1:M${printEndRow}`;
+worksheet.pageSetup.fitToPage = false; // pas de redimensionnement auto
+worksheet.pageSetup.fitToHeight = undefined;
+worksheet.pageSetup.fitToWidth = undefined;
+
+console.log(`Zone d'impression ajustée dynamiquement : A1:M${printEndRow} (dernière ligne de contenu: ${lastContentRow})`);
 
 // ✅ Formules du tableau 2
 const startPrestationsRow = 39 + ordersData.length;
