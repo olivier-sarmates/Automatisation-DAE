@@ -76,6 +76,61 @@ function extractAmount(text) {
 }
 
 // ==========================================================
+// ===== Helpers d'extraction BDC (multi-émetteurs) =========
+// Gère 3 formats : Chorus/État (1407), CROUS (2026), Sorbonne/SAP (4500)
+// ==========================================================
+
+// Parse un montant français : "1 946,00" / "1.138,60" / "572,40" -> nombre
+function parseFrenchNumber(s) {
+  s = String(s).replace(/[\s ]/g, '').replace(/eur/ig, '');
+  if (s.includes(',')) {
+    s = s.replace(/\./g, '').replace(',', '.'); // virgule = décimale, points = milliers
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+// Numéro de commande, selon le format de l'émetteur
+function extractOrderNumber(text) {
+  let m = text.match(/NUMERO\s+D['’]ENGAGEMENT\s*:?\s*(\d{6,})/i); if (m) return m[1].trim(); // Chorus/État
+  m = text.match(/Commande\s*N[°ºo]\s*:?\s*(\d{6,})/i);            if (m) return m[1].trim(); // CROUS
+  m = text.match(/Engagement\s*N[°ºo]\s*:?\s*(\d{6,})/i);          if (m) return m[1].trim(); // CROUS (variante)
+  m = text.match(/Chorus\s*n[°ºo]\s*(\d{6,})/i);                   if (m) return m[1].trim(); // Sorbonne/SAP
+  return 'N/A';
+}
+
+// Date de commande : libellés et séparateurs variés ( . / - )
+function extractOrderDate(text) {
+  const patterns = [
+    /Date\s+de\s+commande\s*:?\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i,     // Chorus/État
+    /Date\s+d['’]?\s*émission\s*:?\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i, // Sorbonne/SAP
+    /Date\s*:?\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i                      // CROUS + générique
+  ];
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// Total HT, selon le libellé de l'émetteur
+function extractTotalHT(text) {
+  const labels = [/TOTAL\s*HT\s*\(EUR\)/i, /TOTAL\s*EN\s*EURO\s*HT/i, /Montant\s*HT/i];
+  for (const lab of labels) {
+    const idx = text.search(lab);
+    if (idx !== -1) {
+      const after = text.slice(idx, idx + 120);
+      const m = after.match(/(\d[\d\s., ]*\d|\d)/);
+      if (m) {
+        const n = parseFrenchNumber(m[1]);
+        if (n !== null) return n;
+      }
+    }
+  }
+  return null;
+}
+
+// ==========================================================
 // ============ API PARSE PDF COMMANDE =======================
 // ==========================================================
 app.post('/api/parse-order-pdf', upload.single('file'), async (req, res) => {
@@ -88,10 +143,9 @@ app.post('/api/parse-order-pdf', upload.single('file'), async (req, res) => {
     console.log('==== RAW PDF TEXT ====');
     console.log(text.substring(0, 400));
 
-    const orderNumber = text.match(/NUMERO D'ENGAGEMENT\s*:\s*([^\n]+)/i)?.[1]?.trim() || 'N/A';
+    const orderNumber = extractOrderNumber(text);
 
-    const dateMatch = text.match(/DATE\s*:\s*(\d{2}\.\d{2}\.\d{4})/i);
-    const dateStr = dateMatch ? dateMatch[1] : null;
+    const dateStr = extractOrderDate(text);
     const orderDate = dateStr || null;
 
 // --- Extraction fiable du service bénéficiaire ---
@@ -131,18 +185,17 @@ for (let i = 0; i < lines.length; i++) {
   }
 }
 
-    let totalHT = null;
-    const htIdx = text.search(/TOTAL HT \(EUR\)/i);
-    if (htIdx !== -1) {
-      const afterHT = text.slice(htIdx).split('\n');
-      for (const l of afterHT) {
-        const match = l.match(/([\d\s,.]+)/);
-        if (match) {
-          const n = parseFloat(match[1].replace(/\s/g, '').replace(',', '.'));
-          if (!isNaN(n)) { totalHT = n; break; }
-        }
-      }
+    // Fallbacks service bénéficiaire pour les autres émetteurs (CROUS, Sorbonne...)
+    if (serviceContact === 'N/A') {
+      const mEm = text.match(/Service\s+émetteur\s*:?\s*([^\n]+)/i);   // CROUS : "Service émetteur : 1010 - UG MASSENA"
+      if (mEm && mEm[1].trim()) serviceContact = mEm[1].trim();
     }
+    if (serviceContact === 'N/A' && lines.length) {
+      const etab = lines.find(l => l.length > 4 && l.length < 60 && /[A-ZÀ-Ÿ]{3,}/.test(l));
+      if (etab) serviceContact = etab.trim();
+    }
+
+    let totalHT = extractTotalHT(text);
 
     console.log('DEBUG orderNumber:', orderNumber);
     console.log('DEBUG serviceContact:', serviceContact);
