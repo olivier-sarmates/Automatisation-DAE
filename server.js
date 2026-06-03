@@ -371,9 +371,26 @@ if (!sheet3Libelle) {
         return isNaN(n) ? 0 : n;
       };
 
+      // ✅ Récupère le titre de la prestation (case du dessus, colonne C) au-dessus
+      // d'une ligne donnée. Utilisé pour le code 007A "Taux horaire applicable en cas
+      // de prestation non définie". Remonte en sautant les lignes vides ; s'arrête sans
+      // titre si la 1ère ligne non vide rencontrée est elle-même une prestation chiffrée.
+      const findTitleAbove = (rows, i) => {
+        for (let j = i - 1; j >= 0; j--) {
+          const r = rows[j] || [];
+          const a = (r[0] || '').toString().trim();
+          const c = (r[2] || '').toString().trim();
+          if (!c) continue;                 // ligne vide -> on continue de remonter
+          if (a === 'Cv-Ch-Et') return '';  // prestation chiffrée -> pas un titre, on n'invente rien
+          return c;                          // titre trouvé
+        }
+        return '';
+      };
+
       let extractedCount = 0;
 
-      for (const row of data) {
+      for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
+        const row = data[rowIdx];
         const colA = (row[0] || '').toString().trim();   // "Cv-Ch-Et"
         const code = (row[1] || '').toString().trim();   // code BPU
         const designation = (row[2] || '').toString().trim();
@@ -390,9 +407,23 @@ if (!sheet3Libelle) {
           quantity > 0 &&
           unitPrice > 0
         ) {
+          // Désignation de base (plafonnée comme avant)
+          let finalDesignation = designation.substring(0, 200);
+
+          // ✅ Code 007A : préfixer le titre de la prestation (case du dessus) sur une
+          // 1ère ligne, puis le texte standard "Taux Horaire applicable...". Détection
+          // tolérante aux zéros de tête (7A / 07A / 007A).
+          const isUndefinedRate = code.replace(/\s/g, '').toUpperCase().replace(/^0+/, '') === '7A';
+          if (isUndefinedRate) {
+            const titleAbove = findTitleAbove(data, rowIdx);
+            if (titleAbove) {
+              finalDesignation = titleAbove.substring(0, 250) + '\n' + finalDesignation;
+            }
+          }
+
           prestations.push({
             bpuCode: code,
-            designation: designation.substring(0, 200),
+            designation: finalDesignation,
             unit,
             quantity,
             unitPrice,
